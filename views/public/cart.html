@@ -459,7 +459,9 @@
 
         document
           .getElementById("checkout-btn")
-          .addEventListener("click", checkout);
+          .addEventListener("click", () => {
+            window.location.href = "/cart/checkout";
+          });
       });
 
       async function fetchCart() {
@@ -478,49 +480,6 @@
         document.getElementById("cart-content").classList.add("flex");
         renderItems(data.cart);
         renderSummary(data.subtotal, data.shipping, data.total);
-
-        // Render Checkout Options
-        const optionsDiv = document.getElementById("checkout-options");
-        const addrSelect = document.getElementById("address-select");
-        const paySelect = document.getElementById("payment-select");
-
-        if (
-          data.addresses &&
-          (data.addresses.length > 0 || data.paymentMethods.length > 0)
-        ) {
-          optionsDiv.classList.remove("hidden");
-
-          // Addresses
-          addrSelect.innerHTML = '<option value="">Adres Seçiniz</option>';
-          if (data.addresses.length > 0) {
-            data.addresses.forEach((a) => {
-              addrSelect.innerHTML += `<option value="${a.id}">${a.title} - ${a.city}</option>`;
-            });
-          } else {
-            addrSelect.innerHTML =
-              '<option value="" disabled>Kayıtlı adres bulunamadı</option>';
-          }
-
-          // Payment
-          paySelect.innerHTML = '<option value="">Kart Seçiniz</option>';
-          if (data.paymentMethods.length > 0) {
-            data.paymentMethods.forEach((p) => {
-              paySelect.innerHTML += `<option value="${p.id}">${p.card_title}</option>`;
-            });
-          } else {
-            paySelect.innerHTML =
-              '<option value="" disabled>Kayıtlı kart bulunamadı</option>';
-          }
-        } else if (data.addresses) {
-          // User logged in but no data, still show the section optionally or maybe hide it?
-          // The user request says "kayıtlı adres ve ödeme yöntemlerinden birini seçmeli", implying they exist.
-          // If arrays are empty, we show appropriate message in dropdown or user can go to profile.
-          optionsDiv.classList.remove("hidden");
-          addrSelect.innerHTML =
-            '<option value="" disabled>Kayıtlı adres yok (Profilinizden ekleyin)</option>';
-          paySelect.innerHTML =
-            '<option value="" disabled>Kayıtlı kart yok (Profilinizden ekleyin)</option>';
-        }
       }
 
       function renderItems(cart) {
@@ -579,60 +538,6 @@
             body: JSON.stringify({ productId: id, size: size }),
           });
           if (res.ok) fetchCart();
-        }
-      }
-
-      async function checkout() {
-        // Validation
-        const optionsDiv = document.getElementById("checkout-options");
-        let body = {};
-
-        if (!optionsDiv.classList.contains("hidden")) {
-          const addrId = document.getElementById("address-select").value;
-          const payId = document.getElementById("payment-select").value;
-
-          let valid = true;
-          // Check if disabled (no address)
-          const addrDisabled =
-            document.getElementById("address-select").options[0].disabled;
-
-          if (!addrId && !addrDisabled) {
-            document.getElementById("address-error").classList.remove("hidden");
-            valid = false;
-          } else {
-            document.getElementById("address-error").classList.add("hidden");
-          }
-
-          const payDisabled =
-            document.getElementById("payment-select").options[0].disabled;
-          if (!payId && !payDisabled) {
-            document.getElementById("payment-error").classList.remove("hidden");
-            valid = false;
-          } else {
-            document.getElementById("payment-error").classList.add("hidden");
-          }
-
-          if (!valid) return;
-
-          body = { addressId: addrId, paymentMethodId: payId };
-        }
-
-        const res = await fetch("/cart/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          window.location.href = data.redirectUrl;
-        } else {
-          if (res.status === 401) {
-            window.location.href = "/auth/login";
-          } else {
-            document.getElementById("checkout-msg").innerText =
-              data.error || "Hata oluştu.";
-          }
         }
       }
     </script>

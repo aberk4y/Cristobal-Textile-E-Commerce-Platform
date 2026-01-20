@@ -77,6 +77,44 @@ router.get('/data', (req, res) => {
     });
 });
 
+// GET Order Detail
+router.get('/order/:id', (req, res) => {
+    const orderId = req.params.id;
+    
+    const sql = `
+        SELECT 
+            o.*,
+            u.username, u.email,
+            a.title as addr_title, a.city, a.district, a.full_address, a.phone,
+            pm.card_title, pm.card_number_masked as card_number
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        LEFT JOIN addresses a ON o.address_id = a.id
+        LEFT JOIN payment_methods pm ON o.payment_id = pm.id
+        WHERE o.id = ?
+    `;
+
+    db.get(sql, [orderId], (err, order) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Veritabanı hatası.' });
+        }
+        if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı.' });
+
+        // Get Items
+        db.all(`
+            SELECT oi.*, p.name_tr, p.name_en, p.cover_image_url
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ?
+        `, [orderId], (err, items) => {
+            if (err) items = [];
+            order.items = items;
+            res.json(order);
+        });
+    });
+});
+
 // POST Add Product
 router.post('/product/add', upload.fields([{ name: 'cover_image', maxCount: 1 }, { name: 'images', maxCount: 10 }]), (req, res) => {
     const { name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock } = req.body;

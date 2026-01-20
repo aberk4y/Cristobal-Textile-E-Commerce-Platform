@@ -45,6 +45,127 @@
     </style>
   </head>
   <body class="bg-gray-50 text-gray-800 antialiased font-sans">
+    <!-- Top Bar -->
+    <div
+      class="bg-primary text-white text-xs tracking-widest text-center py-2 uppercase font-medium"
+    >
+      300$ ve Üzeri Siparişlerde Ücretsiz Kargo
+    </div>
+
+    <!-- Navbar -->
+    <nav
+      class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 transition-colors duration-300"
+    >
+      <div class="w-full px-8 sm:px-10 lg:px-12">
+        <div class="relative flex items-center justify-between h-20">
+          <!-- Mobile Menu Button -->
+          <div class="flex items-center md:hidden">
+            <button class="text-gray-500 hover:text-primary p-2">
+              <span class="material-icons-outlined">menu</span>
+            </button>
+          </div>
+
+          <!-- Left: Logo -->
+          <div class="flex-shrink-0 flex items-center ml-6">
+            <a href="/">
+              <h1
+                class="font-serif text-2xl font-bold tracking-widest text-primary"
+              >
+                CRISTOBAL
+              </h1>
+            </a>
+          </div>
+
+          <!-- Center: Desktop Links (Absolute Centered) -->
+          <div
+            class="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 space-x-8 lg:space-x-12"
+          >
+            <a
+              class="text-base uppercase tracking-widest text-gray-600 hover:text-primary transition-colors"
+              href="/"
+              >Ana Sayfa</a
+            >
+            <a
+              class="text-base uppercase tracking-widest text-gray-600 hover:text-primary transition-colors"
+              href="/products"
+              id="nav-products-text"
+              >Ürünler</a
+            >
+            <a
+              class="text-base uppercase tracking-widest text-gray-600 hover:text-primary transition-colors"
+              href="/about"
+              id="nav-about-text"
+              >Hakkımızda</a
+            >
+            <a
+              class="text-base uppercase tracking-widest text-gray-600 hover:text-primary transition-colors"
+              href="/contact"
+              id="nav-contact-text"
+              >İletişim</a
+            >
+          </div>
+
+          <!-- Right: Icons & User Menu -->
+          <div class="hidden md:flex items-center justify-end space-x-6">
+            <!-- User Menu Area -->
+            <div id="user-menu-container" class="flex items-center">
+              <!-- Will be populated by JS -->
+            </div>
+
+            <span class="text-gray-300">|</span>
+
+            <!-- Cart -->
+            <a
+              href="/cart"
+              class="flex items-center text-gray-500 hover:text-primary relative group"
+            >
+              <span class="material-icons-outlined text-2xl">shopping_bag</span>
+              <span class="ml-2 text-base font-medium">Sepetim</span>
+              <span
+                id="cart-badge"
+                class="hidden absolute -top-1 -right-1 h-2 w-2 bg-accent-gold rounded-full ring-2 ring-white"
+              ></span>
+            </a>
+
+            <span class="text-gray-300">|</span>
+
+            <!-- Lang -->
+            <div class="relative group">
+              <button
+                class="flex items-center text-gray-500 hover:text-primary py-4"
+              >
+                <span class="material-icons-outlined text-2xl">language</span>
+                <span class="ml-2 text-base font-medium">Dil</span>
+              </button>
+              <div
+                class="absolute top-full right-0 h-4 w-full bg-transparent"
+              ></div>
+              <div
+                class="absolute right-0 top-full mt-2 w-32 bg-white border border-gray-100 shadow-lg rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-700 ease-in-out transform translate-y-4 group-hover:translate-y-0 z-50"
+              >
+                <a
+                  href="/set-lang/tr"
+                  class="block px-4 py-2 text-base text-gray-700 hover:bg-gray-50"
+                  >TR</a
+                >
+                <a
+                  href="/set-lang/en"
+                  class="block px-4 py-2 text-base text-gray-700 hover:bg-gray-50"
+                  >EN</a
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile Icons (Minimal) -->
+          <div class="flex items-center space-x-4 md:hidden">
+            <a href="/cart" class="text-gray-500"
+              ><span class="material-icons-outlined">shopping_bag</span></a
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
     <!-- Progress Header -->
     <div class="bg-white border-b border-gray-200 py-6 sticky top-0 z-10">
       <div class="max-w-3xl mx-auto px-4">
@@ -192,6 +313,7 @@
               İptal
             </button>
             <button
+              type="button"
               onclick="saveAddress()"
               class="bg-primary text-white px-6 py-2 text-sm uppercase tracking-widest hover:bg-black"
             >
@@ -305,6 +427,7 @@
               İptal
             </button>
             <button
+              type="button"
               onclick="savePayment()"
               class="bg-primary text-white px-6 py-2 text-sm uppercase tracking-widest hover:bg-black"
             >
@@ -386,6 +509,7 @@
       </div>
     </div>
 
+    <script src="/js/layout.js"></script>
     <script>
       // State
       const state = {
@@ -399,6 +523,16 @@
 
       // Init
       window.addEventListener("load", async () => {
+        // Fetch User for Navbar
+        fetch("/api/user/me")
+          .then((res) => res.json())
+          .then((data) => {
+            const user = data.user;
+            const lang = data.lang;
+            if (user) renderUserMenu(user, lang);
+            else window.location.href = "/auth/login";
+          });
+
         await Promise.all([loadAddresses(), loadPayments(), loadCart()]);
         showStep(1);
       });
@@ -575,17 +709,23 @@
         const form = document.getElementById("addr-form");
         const data = Object.fromEntries(new FormData(form).entries());
 
-        const res = await fetch("/api/user/addresses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (res.ok) {
-          toggleNewAddress();
-          form.reset();
-          loadAddresses();
-        } else {
-          alert("Adres eklenemedi.");
+        try {
+          const res = await fetch("/api/user/addresses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          if (res.ok) {
+            toggleNewAddress();
+            form.reset();
+            loadAddresses();
+          } else {
+            const err = await res.json();
+            alert("Hata: " + (err.error || "Adres eklenemedi."));
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Bir hata oluştu.");
         }
       }
 
@@ -593,17 +733,23 @@
         const form = document.getElementById("pay-form");
         const data = Object.fromEntries(new FormData(form).entries());
 
-        const res = await fetch("/api/user/payment-methods", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (res.ok) {
-          toggleNewPayment();
-          form.reset();
-          loadPayments();
-        } else {
-          alert("Kart eklenemedi.");
+        try {
+          const res = await fetch("/api/user/payment-methods", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          if (res.ok) {
+            toggleNewPayment();
+            form.reset();
+            loadPayments();
+          } else {
+            const err = await res.json();
+            alert("Hata: " + (err.error || "Kart eklenemedi."));
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Bir hata oluştu.");
         }
       }
 

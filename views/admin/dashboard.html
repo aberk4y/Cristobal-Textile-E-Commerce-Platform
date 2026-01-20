@@ -581,6 +581,33 @@
       </div>
     </div>
 
+    <!-- Order Detail Modal -->
+    <div id="orderDetailModal" class="hidden fixed z-20 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="document.getElementById('orderDetailModal').classList.add('hidden')"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="w-full">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xl leading-6 font-bold text-gray-900" id="detail-modal-title">Sipariş Detayı</h3>
+                                <button onclick="document.getElementById('orderDetailModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                                    <span class="material-icons-outlined">close</span>
+                                </button>
+                            </div>
+                            
+                            <div id="order-detail-content" class="space-y-6">
+                                <!-- Loaded via JS -->
+                                <div class="text-center py-12"><p>Yükleniyor...</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
       let globalProducts = [];
 
@@ -683,7 +710,8 @@
           }</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                     <div class="flex justify-end gap-2">
+                     <div class="flex justify-end gap-2 items-center">
+                         <button onclick="openDetailModal(${o.id})" class="text-blue-600 hover:text-blue-900 border border-blue-200 bg-blue-50 px-3 py-1 rounded text-xs">Detay</button>
                          <select onchange="updateOrder(${
                            o.id
                          }, this.value)" class="text-sm border-gray-300 rounded-md shadow-sm">
@@ -806,16 +834,100 @@
             });
             const result = await res.json();
             if (result.success) {
-              alert("Güncellendi");
+              alert("Ürün güncellendi.");
               document
                 .getElementById("editProductModal")
                 .classList.add("hidden");
               fetchData();
             } else {
-              alert("Hata");
+              alert("Hata: " + (result.error || "Güncellenemedi"));
             }
           }
         });
+
+    async function openDetailModal(id) {
+        const modal = document.getElementById('orderDetailModal');
+        const content = document.getElementById('order-detail-content');
+        const title = document.getElementById('detail-modal-title');
+        
+        modal.classList.remove('hidden');
+        title.innerText = `Sipariş Detayı #${id}`;
+        content.innerHTML = '<div class="text-center py-12"><p class="text-gray-500">Yükleniyor...</p></div>';
+        
+        try {
+            const res = await fetch(`/admin/order/${id}`);
+            if(!res.ok) throw new Error("Veri alınamadı");
+            const order = await res.json();
+            
+            const date = new Date(order.created_at).toLocaleString('tr-TR');
+            
+            let itemsHtml = '';
+            if(order.items) {
+                order.items.forEach(item => {
+                    itemsHtml += `
+                        <div class="flex justify-between items-center border-b border-gray-100 py-3 last:border-0">
+                            <div class="flex items-center">
+                                <img src="${item.cover_image_url || '/images/logo.png'}" class="w-12 h-12 rounded object-cover mr-4 bg-gray-50">
+                                <div>
+                                    <p class="font-bold text-sm text-gray-900">${item.name_tr || 'Ürün'}</p>
+                                    <p class="text-xs text-gray-500">Beden: ${item.size}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium">${item.price} TL</p>
+                                <p class="text-xs text-gray-500">x${item.quantity}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Customer Info -->
+                    <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                        <h4 class="font-bold text-sm uppercase text-gray-500 mb-3 border-b pb-2">Müşteri Bilgileri</h4>
+                        <p class="text-sm"><span class="font-medium">Adı:</span> ${order.username}</p>
+                        <p class="text-sm"><span class="font-medium">E-posta:</span> ${order.email}</p>
+                        <p class="text-sm mt-2"><span class="font-medium">Sipariş Tarihi:</span> ${date}</p>
+                        <p class="text-sm"><span class="font-medium">Durum:</span> <span class="font-bold text-primary">${order.status}</span></p>
+                    </div>
+
+                    <!-- Payment Info -->
+                    <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                        <h4 class="font-bold text-sm uppercase text-gray-500 mb-3 border-b pb-2">Ödeme Bilgileri</h4>
+                        <p class="text-sm"><span class="font-medium">Yöntem:</span> Kredi Kartı</p>
+                        <p class="text-sm"><span class="font-medium">Kart Adı:</span> ${order.card_title || '-'}</p>
+                        <p class="text-sm"><span class="font-medium">Kart No:</span> ${order.card_number || '-'}</p>
+                        <p class="text-sm mt-2 text-lg font-bold text-gray-900">Toplam: ${order.total_amount} TL</p>
+                    </div>
+
+                    <!-- Shipping Address -->
+                    <div class="md:col-span-2 bg-gray-50 p-4 rounded border border-gray-200">
+                        <h4 class="font-bold text-sm uppercase text-gray-500 mb-3 border-b pb-2">Teslimat Adresi</h4>
+                        <p class="font-bold text-sm">${order.addr_title || 'Adres Silinmiş'}</p>
+                        <p class="text-sm text-gray-700 mt-1 whitespace-pre-line">${order.full_address || '-'}</p>
+                        <p class="text-sm text-gray-600 mt-1">${order.city || '-'} / ${order.district || '-'}</p>
+                        <p class="text-sm font-medium mt-2"><span class="material-icons-outlined text-xs align-bottom">phone</span> ${order.phone || '-'}</p>
+                    </div>
+                </div>
+
+                <!-- Items -->
+                <div class="mt-4">
+                    <h4 class="font-bold text-sm uppercase text-gray-500 mb-3 border-b pb-2">Sipariş İçeriği</h4>
+                    <div class="bg-gray-50 px-4 rounded border border-gray-200">
+                        ${itemsHtml}
+                    </div>
+                </div>
+            `;
+            
+        } catch(e) {
+            content.innerHTML = '<p class="text-red-500 text-center">Detaylar yüklenirken hata oluştu.</p>';
+            console.error(e);
+        }
+    }
+
+
 
       // Delete Product
       async function deleteProduct(id) {

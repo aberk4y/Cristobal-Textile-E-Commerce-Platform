@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
@@ -216,16 +216,19 @@
           </div>
 
           <!-- Content -->
-          <div class="flex-1">
+          <div class="flex-1 flex flex-col gap-8">
+            <!-- Active Orders -->
             <div
-              class="bg-white dark:bg-surface-dark shadow-sm border border-gray-100 overflow-hidden"
+              class="bg-white dark:bg-surface-dark shadow-sm border border-gray-100 overflow-hidden mb-8"
             >
               <div class="p-6 border-b border-gray-100">
-                <h2 class="text-xl font-serif text-primary">Sipariş Geçmişi</h2>
+                <h2 class="text-xl font-serif text-primary dark:text-white">
+                  Aktif Siparişler
+                </h2>
               </div>
               <div class="overflow-x-auto">
                 <table class="w-full">
-                  <thead class="bg-gray-50">
+                  <thead class="bg-gray-50 dark:bg-zinc-800">
                     <tr>
                       <th
                         class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
@@ -254,7 +257,69 @@
                       </th>
                     </tr>
                   </thead>
-                  <tbody id="orders-body" class="divide-y divide-gray-100">
+                  <tbody
+                    id="active-orders-body"
+                    class="divide-y divide-gray-100 dark:divide-gray-800"
+                  >
+                    <tr>
+                      <td
+                        colspan="5"
+                        class="px-6 py-12 text-center text-gray-500"
+                      >
+                        Yükleniyor...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Completed Orders -->
+            <div
+              class="bg-white dark:bg-surface-dark shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div class="p-6 border-b border-gray-100">
+                <h2
+                  class="text-xl font-serif text-primary dark:text-white opacity-80"
+                >
+                  Geçmiş Siparişler
+                </h2>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead class="bg-gray-50 dark:bg-zinc-800">
+                    <tr>
+                      <th
+                        class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        Sipariş No
+                      </th>
+                      <th
+                        class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        Tarih
+                      </th>
+                      <th
+                        class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        Durum
+                      </th>
+                      <th
+                        class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        Tutar
+                      </th>
+                      <th
+                        class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        Detay
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    id="completed-orders-body"
+                    class="divide-y divide-gray-100 dark:divide-gray-800"
+                  >
                     <tr>
                       <td
                         colspan="5"
@@ -272,7 +337,7 @@
       </div>
     </div>
 
-    <!-- Order Details Modal -->
+    <!-- Order Details Modal (Unchanged Layout) -->
     <div
       id="orderModal"
       class="hidden fixed z-[60] inset-0 overflow-y-auto"
@@ -304,7 +369,6 @@
                 >
                   Sipariş Detayı #<span id="modal-order-id"></span>
                 </h3>
-
                 <div class="mt-2 border-t border-gray-100 pt-4">
                   <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -334,9 +398,7 @@
                     <tbody
                       id="modal-items-body"
                       class="bg-white divide-y divide-gray-200"
-                    >
-                      <!-- Items -->
-                    </tbody>
+                    ></tbody>
                   </table>
                 </div>
               </div>
@@ -391,43 +453,85 @@
           .then((orders) => {
             console.log("Orders Data:", orders);
             globalOrders = orders;
-            const tbody = document.getElementById("orders-body");
-            tbody.innerHTML = "";
+
+            const activeBody = document.getElementById("active-orders-body");
+            const completedBody = document.getElementById(
+              "completed-orders-body",
+            );
+
+            activeBody.innerHTML = "";
+            completedBody.innerHTML = "";
 
             if (orders.length === 0) {
-              tbody.innerHTML =
-                '<tr><td colspan="5" class="px-6 py-12 text-center text-gray-500 text-sm">Henüz bir siparişiniz bulunmuyor.</td></tr>';
+              activeBody.innerHTML =
+                '<tr><td colspan="5" class="px-6 py-12 text-center text-gray-500 text-sm">Aktif siparişiniz bulunmuyor.</td></tr>';
+              completedBody.innerHTML =
+                '<tr><td colspan="5" class="px-6 py-12 text-center text-gray-500 text-sm">Geçmiş siparişiniz bulunmuyor.</td></tr>';
               return;
             }
 
-            orders.forEach((order) => {
-              const date = new Date(order.created_at).toLocaleDateString(
-                "tr-TR"
-              );
+            // FILTER ORDERS
+            const activeOrders = orders.filter(
+              (o) => o.status === "Hazırlanıyor" || o.status === "Kargoda",
+            );
+            const completedOrders = orders.filter(
+              (o) => o.status === "Teslim Edildi" || o.status === "İptal",
+            );
+
+            function renderRow(order) {
+              // Date Fix
+              let dateStr = order.created_at.replace(" ", "T");
+              if (!dateStr.endsWith("Z")) dateStr += "Z";
+              const date = new Date(dateStr).toLocaleDateString("tr-TR");
+
               let statusClass = "bg-yellow-100 text-yellow-800";
               if (order.status === "Teslim Edildi")
                 statusClass = "bg-green-100 text-green-800";
               if (order.status === "Kargoda")
                 statusClass = "bg-blue-100 text-blue-800";
+              if (order.status === "İptal")
+                statusClass = "bg-red-100 text-red-800";
 
-              tbody.innerHTML += `
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-primary">#${order.id}</td>
-                                <td class="px-6 py-4 text-sm text-gray-500">${date}</td>
-                                <td class="px-6 py-4">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">${order.status}</span>
-                                </td>
-                                <td class="px-6 py-4 text-right text-sm font-bold text-gray-900">${order.total_amount} TL</td>
-                                <td class="px-6 py-4 text-right text-sm">
-                                    <button onclick="openModal(${order.id})" class="text-primary hover:text-black underline text-xs font-bold uppercase tracking-wide">İncele</button>
-                                </td>
-                            </tr>
-                         `;
-            });
+              return `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 text-sm font-medium text-primary dark:text-gray-200">#${order.id}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">${date}</td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">${order.status}</span>
+                        </td>
+                        <td class="px-6 py-4 text-right text-sm font-bold text-gray-900 dark:text-white">${order.total_amount} TL</td>
+                        <td class="px-6 py-4 text-right text-sm">
+                            <button onclick="openModal(${order.id})" class="text-primary hover:text-black dark:text-gray-300 dark:hover:text-white underline text-xs font-bold uppercase tracking-wide">İncele</button>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            // RENDER ACTIVE
+            if (activeOrders.length === 0) {
+              activeBody.innerHTML =
+                '<tr><td colspan="5" class="px-6 py-12 text-center text-gray-500 text-sm">Aktif siparişiniz bulunmuyor.</td></tr>';
+            } else {
+              activeOrders.forEach(
+                (o) => (activeBody.innerHTML += renderRow(o)),
+              );
+            }
+
+            // RENDER COMPLETED
+            if (completedOrders.length === 0) {
+              completedBody.innerHTML =
+                '<tr><td colspan="5" class="px-6 py-12 text-center text-gray-500 text-sm">Geçmiş siparişiniz bulunmuyor.</td></tr>';
+            } else {
+              completedOrders.forEach(
+                (o) => (completedBody.innerHTML += renderRow(o)),
+              );
+            }
           })
           .catch((err) => {
-            document.getElementById("orders-body").innerHTML =
-              '<tr><td colspan="5" class="px-6 py-12 text-center text-red-500">Hata oluştu. Giriş yaptığınızdan emin olun.</td></tr>';
+            const activeBody = document.getElementById("active-orders-body");
+            if (activeBody)
+              activeBody.innerHTML =
+                '<tr><td colspan="5" class="px-6 py-12 text-center text-red-500">Hata oluştu.</td></tr>';
           });
       });
 

@@ -135,13 +135,14 @@ router.post('/place-order', async (req, res) => {
     const restoreCart = () => { req.session.cart = cart; };
 
     try {
-        // 4. Fetch Products & Calculate Total
+        // 4. Validate Stock Availability & Calculate Total
         const productPromises = cart.map(item => getProduct(item.productId));
         const products = await Promise.all(productPromises);
 
         let total = 0;
         const validItems = [];
 
+        // Check stock availability
         for (let i = 0; i < products.length; i++) {
             const product = products[i];
             const item = cart[i];
@@ -151,6 +152,19 @@ router.post('/place-order', async (req, res) => {
                 return res.status(400).json({ error: `Ürün bulunamadı: ID ${item.productId}` });
             }
             
+            // Check stock from product_sizes
+            const stockRow = await new Promise((resolve, reject) => {
+                 db.get("SELECT stock FROM product_sizes WHERE product_id = ? AND size = ?", [product.id, item.size], (err, row) => {
+                     if(err) reject(err);
+                     else resolve(row);
+                 });
+            });
+
+            if (!stockRow || stockRow.stock < item.quantity) {
+                 restoreCart();
+                 return res.status(400).json({ error: `Yetersiz stok: ${product.name_tr} (${item.size})` });
+            }
+
             total += product.price * item.quantity;
             validItems.push({
                 product: product,
@@ -161,11 +175,28 @@ router.post('/place-order', async (req, res) => {
         total += 300; // Shipping
 
         // 5. Database Transaction
-        await new Promise((resolve, reject) => {
+        const orderId = await new Promise((resolve, reject) => {
             db.serialize(() => {
                 db.run("BEGIN TRANSACTION");
 
-                // Insert Order with Address and Payment IDs
+                // A. Decrement Stock
+                const updateStockStmt = db.prepare("UPDATE product_sizes SET stock = stock - ? WHERE product_id = ? AND size = ?");
+                let stockError = false;
+
+                validItems.forEach(vi => {
+                    if (stockError) return;
+                    updateStockStmt.run(vi.cartItem.quantity, vi.cartItem.productId, vi.cartItem.size, (err) => {
+                        if (err) {
+                            stockError = true;
+                            // We will catch this via rejection, but need to stop further execution
+                        }
+                    });
+                });
+                updateStockStmt.finalize();
+                
+                if (stockError) return reject(new Error("Stok güncellenirken hata oluştu."));
+
+                // B. Insert Order
                 db.run("INSERT INTO orders (user_id, total_amount, status, address_id, payment_id) VALUES (?, ?, ?, ?, ?)", 
                     [req.session.user.id, total, 'Hazırlanıyor', addressId, paymentId], 
                     function(err) {
