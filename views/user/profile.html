@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
@@ -42,7 +42,7 @@
     <div
       class="bg-primary text-white text-xs tracking-widest text-center py-2 uppercase font-medium"
     >
-      300$ ve Üzeri Siparişlerde Ücretsiz Kargo
+      1000$ ve Üzeri Siparişlerde Ücretsiz Kargo
     </div>
 
     <!-- Navbar -->
@@ -320,15 +320,40 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data),
             })
-              .then((res) => res.json())
-              .then((result) => {
+              .then(async (res) => {
+                if (res.redirected) {
+                  window.location.href = res.url;
+                  return;
+                }
+                const result = await res.json();
+
                 const msg = document.getElementById("profile-message");
                 msg.innerText =
-                  result.message || (result.success ? "Güncellendi" : "Hata");
+                  result.message ||
+                  (result.success
+                    ? "Şifreniz başarıyla güncellendi."
+                    : "Bir hata oluştu.");
                 msg.classList.remove("hidden");
-                if (result.success)
-                  msg.classList.add("bg-green-50", "text-green-700");
-                else msg.classList.add("bg-red-50", "text-red-700");
+
+                // Reset classes
+                msg.className =
+                  "mb-4 p-3 rounded " +
+                  (result.success
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700");
+
+                if (result.success) {
+                  // Clear password input
+                  e.target.reset();
+                  // Also show alert for visibility
+                  alert("Şifreniz başarıyla güncellendi.");
+                } else {
+                  alert("Hata: " + (result.message || "İşlem başarısız."));
+                }
+              })
+              .catch((err) => {
+                console.error(err);
+                alert("Bir hata oluştu. Lütfen tekrar deneyin.");
               });
           });
       });
