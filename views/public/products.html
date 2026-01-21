@@ -281,6 +281,48 @@
       </div>
     </div>
 
+    <!-- Models Marquee Section (Infinite Scroll Right to Left) -->
+    <style>
+      @keyframes marquee {
+        0% {
+          transform: translateX(0);
+        }
+        100% {
+          transform: translateX(-50%);
+        }
+      }
+      .animate-marquee-infinite {
+        display: flex;
+        width: max-content;
+        animation: marquee 60s linear infinite; /* Slow smooth scroll */
+      }
+    </style>
+    <div class="w-full bg-black overflow-hidden py-0">
+      <div class="animate-marquee-infinite">
+        <!-- Repeat images enough to cover wide screens and allow looping -->
+        <img
+          src="/images/modeller2.png"
+          class="h-[400px] object-cover opacity-90 grayscale-[20%]"
+          alt="Models"
+        />
+        <img
+          src="/images/modeller2.png"
+          class="h-[400px] object-cover opacity-90 grayscale-[20%]"
+          alt="Models"
+        />
+        <img
+          src="/images/modeller2.png"
+          class="h-[400px] object-cover opacity-90 grayscale-[20%]"
+          alt="Models"
+        />
+        <img
+          src="/images/modeller2.png"
+          class="h-[400px] object-cover opacity-90 grayscale-[20%]"
+          alt="Models"
+        />
+      </div>
+    </div>
+
     <!-- Footer (Same as index.html) -->
     <footer class="bg-primary text-white pt-16 pb-8">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
