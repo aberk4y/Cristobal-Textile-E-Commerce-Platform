@@ -13,6 +13,7 @@
       href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <script>
       tailwind.config = {
         darkMode: "class",
@@ -198,18 +199,26 @@
                         </div>
                         <div>
                              <span class="block text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Email</span>
-                             <a href="mailto:info@cristobal.com.tr" class="text-2xl text-white font-light hover:text-gray-300 transition-colors">info@cristobal.com.tr</a>
+                             <a href="mailto:cristobaltrco@gmail.com" class="text-2xl text-white font-light hover:text-gray-300 transition-colors">cristobaltrco@gmail.com</a>
                         </div>
                         <div>
                              <span class="block text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">WhatsApp / Telefon</span>
-                             <a href="tel:+905313316909" class="text-2xl text-white font-light hover:text-gray-300 transition-colors">+90 531 331 69 09</a>
+                             <a href="tel:+905434011917" class="text-2xl text-white font-light hover:text-gray-300 transition-colors">+90 543 401 19 17</a>
                         </div>
                     </div>
 
                     <!-- Socials Minimal -->
-                    <div class="mt-16 flex space-x-8">
-                        <a href="#" class="text-gray-400 hover:text-white transition-colors"><span class="material-icons-outlined">facebook</span></a>
-                        <a href="#" class="text-gray-400 hover:text-white transition-colors"><span class="material-icons-outlined">camera_alt</span></a>
+                    <div class="mt-16 flex space-x-6">
+                        <a href="https://www.instagram.com/aberk4y/" target="_blank"  class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-instagram text-2xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-facebook-f text-2xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-twitter text-2xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-linkedin-in text-2xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-youtube text-2xl"></i></a>
+                    </div>
+
+                    <!-- Logo Below Socials -->
+                    <div class="mt-20 flex justify-center">
+                        <img src="/images/logocr.png" alt="Cristobal Logo" class="h-56 opacity-90" />
                     </div>
                 </div>
                 <!-- Background decoration -->
@@ -303,17 +312,23 @@
           .getElementById("contact-form")
           .addEventListener("submit", (e) => {
             e.preventDefault();
-            // Simulate Fetch/CSR
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
-            console.log("Sending contact data:", data);
-
-            // Mock API call
-            // fetch('/api/contact', { ... })
-
-            alert("Mesajınız alındı (Simülasyon). Teşekkürler.");
-            e.target.reset();
+            
+            // Construct Mailto Link
+            const subject = encodeURIComponent("İletişim Formu: " + data.name);
+            const body = encodeURIComponent(data.message);
+            
+            // Gmail Compose URL
+            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=cristobaltrco@gmail.com&su=${subject}&body=${body}`;
+            
+            // Open in new tab
+            window.open(gmailUrl, '_blank');
+            
+            // Optional: Show a message or reset form
+            // alert("E-posta istemciniz açılıyor...");
           });
+
       });
     </script>
 
@@ -327,20 +342,11 @@
               dikişte kalite, zarafet ve dayanıklılık.
             </p>
             <div class="flex space-x-4">
-              <a
-                href="#"
-                class="text-gray-400 hover:text-white transition-colors"
-                ><span class="material-icons-outlined text-xl"
-                  >facebook</span
-                ></a
-              >
-              <a
-                href="#"
-                class="text-gray-400 hover:text-white transition-colors"
-                ><span class="material-icons-outlined text-xl"
-                  >camera_alt</span
-                ></a
-              >
+              <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-instagram text-xl"></i></a>
+              <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-facebook-f text-xl"></i></a>
+              <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-twitter text-xl"></i></a>
+              <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-linkedin-in text-xl"></i></a>
+              <a href="#" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-youtube text-xl"></i></a>
             </div>
           </div>
           <div>

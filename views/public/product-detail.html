@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
@@ -13,6 +13,10 @@
     <link
       href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined"
       rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
     <!-- Config -->
     <script>
@@ -245,7 +249,11 @@
                   >
                   <button
                     type="button"
-                    onclick="document.getElementById('sizeChartModal').classList.remove('hidden')"
+                    onclick="
+                      document
+                        .getElementById('sizeChartModal')
+                        .classList.remove('hidden')
+                    "
                     class="text-xs underline text-gray-500 hover:text-primary"
                   >
                     Beden Tablosu
@@ -325,7 +333,9 @@
       >
         <div
           class="fixed inset-0 bg-gray-500 bg-opacity-75"
-          onclick="document.getElementById('sizeChartModal').classList.add('hidden')"
+          onclick="
+            document.getElementById('sizeChartModal').classList.add('hidden')
+          "
         ></div>
         <div
           class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full relative p-6"
@@ -333,7 +343,9 @@
           <button
             type="button"
             class="absolute top-4 right-4"
-            onclick="document.getElementById('sizeChartModal').classList.add('hidden')"
+            onclick="
+              document.getElementById('sizeChartModal').classList.add('hidden')
+            "
           >
             <span class="material-icons-outlined">close</span>
           </button>
@@ -360,17 +372,28 @@
               <a
                 href="#"
                 class="text-gray-400 hover:text-white transition-colors"
-                ><span class="material-icons-outlined text-xl"
-                  >facebook</span
-                ></a
-              >
+                ><i class="fab fa-instagram text-xl"></i
+              ></a>
               <a
                 href="#"
                 class="text-gray-400 hover:text-white transition-colors"
-                ><span class="material-icons-outlined text-xl"
-                  >camera_alt</span
-                ></a
-              >
+                ><i class="fab fa-facebook-f text-xl"></i
+              ></a>
+              <a
+                href="#"
+                class="text-gray-400 hover:text-white transition-colors"
+                ><i class="fab fa-twitter text-xl"></i
+              ></a>
+              <a
+                href="#"
+                class="text-gray-400 hover:text-white transition-colors"
+                ><i class="fab fa-linkedin-in text-xl"></i
+              ></a>
+              <a
+                href="#"
+                class="text-gray-400 hover:text-white transition-colors"
+                ><i class="fab fa-youtube text-xl"></i
+              ></a>
             </div>
           </div>
           <div>
@@ -486,7 +509,7 @@
 
             // Footer Logic
             const footerAccountLinks = document.getElementById(
-              "footer-account-links"
+              "footer-account-links",
             );
             if (footerAccountLinks) {
               if (user) {
@@ -541,7 +564,7 @@
 
             // Sizes
             const sizeContainer = document.getElementById(
-              "size-selector-container"
+              "size-selector-container",
             );
             if (sizeContainer) {
               sizeContainer.innerHTML = "";
@@ -553,7 +576,7 @@
               // Fallback / Legacy
               if (sizes.length === 0) {
                 ["46", "48", "50", "52", "54", "56"].forEach((s) =>
-                  sizes.push({ size: s, stock: 10 })
+                  sizes.push({ size: s, stock: 10 }),
                 );
               }
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
@@ -14,6 +14,10 @@
     <link
       href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined"
       rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
     <!-- Config from Reference -->
     <script>
@@ -291,17 +295,28 @@
               <a
                 href="#"
                 class="text-gray-400 hover:text-white transition-colors"
-                ><span class="material-icons-outlined text-xl"
-                  >facebook</span
-                ></a
-              >
+                ><i class="fab fa-instagram text-xl"></i
+              ></a>
               <a
                 href="#"
                 class="text-gray-400 hover:text-white transition-colors"
-                ><span class="material-icons-outlined text-xl"
-                  >camera_alt</span
-                ></a
-              >
+                ><i class="fab fa-facebook-f text-xl"></i
+              ></a>
+              <a
+                href="#"
+                class="text-gray-400 hover:text-white transition-colors"
+                ><i class="fab fa-twitter text-xl"></i
+              ></a>
+              <a
+                href="#"
+                class="text-gray-400 hover:text-white transition-colors"
+                ><i class="fab fa-linkedin-in text-xl"></i
+              ></a>
+              <a
+                href="#"
+                class="text-gray-400 hover:text-white transition-colors"
+                ><i class="fab fa-youtube text-xl"></i
+              ></a>
             </div>
           </div>
           <div>
@@ -412,7 +427,7 @@
 
             // Footer Logic
             const footerAccountLinks = document.getElementById(
-              "footer-account-links"
+              "footer-account-links",
             );
             if (footerAccountLinks) {
               if (user) {
