@@ -1,280 +1,1 @@
-const express = require('express');
-const router = express.Router();
-const db = require('../database/database');
-const multer = require('multer');
-const path = require('path');
-
-// Middleware to check if user is admin
-const isAdmin = (req, res, next) => {
-    if (req.session.user && req.session.user.role === 'admin') {
-        return next();
-    }
-    // Redirect to login if not admin, or show error
-    res.redirect('/auth/login');
-};
-
-router.use(isAdmin);
-
-// Multer Setup for Image Uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'public/images/');
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
-const upload = multer({ storage: storage });
-
-// GET Admin Dashboard (HTML)
-router.get('/', (req, res) => {
-    const path = require('path');
-    res.sendFile(path.join(__dirname, '../views/admin/dashboard.html'));
-});
-
-// GET Dashboard Data (API)
-router.get('/data', (req, res) => {
-    db.all(`
-        SELECT p.*, 
-        (SELECT image_url FROM product_images WHERE product_id = p.id LIMIT 1) as first_image 
-        FROM products p ORDER BY id DESC
-    `, [], (err, products) => {
-        if (err) products = [];
-        
-        // Fetch All Sizes
-        db.all("SELECT * FROM product_sizes", [], (err, allSizes) => {
-            if (err) allSizes = [];
-            
-            // Map sizes to products
-            products.forEach(p => {
-                p.sizes = allSizes.filter(s => s.product_id === p.id);
-            });
-
-            // Fetch Orders
-            db.all("SELECT orders.*, users.username FROM orders JOIN users ON orders.user_id = users.id ORDER BY created_at DESC", [], (err, orders) => {
-                if (err) orders = [];
-
-                // Fetch All Order Items with Product Names
-                const itemSql = `
-                    SELECT oi.order_id, oi.quantity, oi.size, p.name_tr, p.name_en, oi.product_id
-                    FROM order_items oi
-                    LEFT JOIN products p ON oi.product_id = p.id
-                `;
-
-                db.all(itemSql, [], (err, items) => {
-                    if (err) items = [];
-                    
-                    // Attach items to their orders
-                    orders.forEach(o => {
-                        o.items = items.filter(i => i.order_id === o.id);
-                    });
-
-                    res.json({ products, orders });
-                });
-            });
-        });
-    });
-});
-
-// GET Order Detail
-router.get('/order/:id', (req, res) => {
-    const orderId = req.params.id;
-    
-    const sql = `
-        SELECT 
-            o.*,
-            u.username, u.email,
-            a.title as addr_title, a.city, a.district, a.full_address, a.phone,
-            pm.card_title, pm.card_number_masked as card_number
-        FROM orders o
-        JOIN users u ON o.user_id = u.id
-        LEFT JOIN addresses a ON o.address_id = a.id
-        LEFT JOIN payment_methods pm ON o.payment_id = pm.id
-        WHERE o.id = ?
-    `;
-
-    db.get(sql, [orderId], (err, order) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Veritabanı hatası.' });
-        }
-        if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı.' });
-
-        // Get Items
-        db.all(`
-            SELECT oi.*, p.name_tr, p.name_en, p.cover_image_url
-            FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = ?
-        `, [orderId], (err, items) => {
-            if (err) items = [];
-            order.items = items;
-            res.json(order);
-        });
-    });
-});
-
-// POST Add Product
-router.post('/product/add', upload.fields([{ name: 'cover_image', maxCount: 1 }, { name: 'images', maxCount: 10 }]), (req, res) => {
-    const { name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock } = req.body;
-    
-    let coverImageUrl = null;
-    if (req.files && req.files['cover_image']) {
-        coverImageUrl = '/images/' + req.files['cover_image'][0].filename;
-    }
-
-    const stmt = db.prepare(`
-        INSERT INTO products (name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock, cover_image_url) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    
-    stmt.run(name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock, coverImageUrl, function(err) {
-        if(err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Veritabanı hatası' });
-        }
-        
-        const productId = this.lastID;
-        
-        if (req.files && req.files['images'] && req.files['images'].length > 0) {
-            const imgStmt = db.prepare("INSERT INTO product_images (product_id, image_url) VALUES (?, ?)");
-            const promises = req.files['images'].map(file => {
-                return new Promise((resolve, reject) => {
-                    imgStmt.run(productId, '/images/' + file.filename, (err) => {
-                        if (err) reject(err);
-                        else resolve();
-                    });
-                });
-            });
-
-            Promise.all(promises)
-                .then(() => {
-                    imgStmt.finalize();
-                    // Handle Sizes
-                    handleSizes(productId);
-                })
-                .catch(err => {
-                    console.error("Image upload error:", err);
-                    // Still try to add sizes
-                     handleSizes(productId);
-                });
-        } else {
-             handleSizes(productId);
-        }
-
-        function handleSizes(pId) {
-             if (req.body.sizes) {
-                 try {
-                     const sizes = JSON.parse(req.body.sizes);
-                     const sizeStmt = db.prepare("INSERT INTO product_sizes (product_id, size, stock) VALUES (?, ?, ?)");
-                     sizes.forEach(s => {
-                         sizeStmt.run(pId, s.size, s.stock);
-                     });
-                     sizeStmt.finalize();
-                 } catch (e) {
-                     console.error("Size parse error:", e);
-                 }
-             }
-             res.json({ success: true, message: 'Ürün eklendi.' });
-        }
-    });
-    stmt.finalize();
-});
-
-// POST Update Product
-router.post('/product/update/:id', (req, res) => {
-    const { name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock } = req.body;
-    
-    const sql = `UPDATE products SET 
-                 name_tr = ?, name_en = ?, description_tr = ?, description_en = ?, 
-                 fabric_info = ?, return_info = ?, price = ?, category = ?, stock = ? 
-                 WHERE id = ?`;
-                 
-    db.run(sql, [name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock, req.params.id], (err) => {
-        if(err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Hata.' });
-        }
-        
-        // Update Sizes
-        if (req.body.sizes) {
-            const pId = req.params.id;
-            db.run("DELETE FROM product_sizes WHERE product_id = ?", [pId], (err) => {
-                 if (!err) {
-                     try {
-                         const sizes = JSON.parse(req.body.sizes);
-                         const sizeStmt = db.prepare("INSERT INTO product_sizes (product_id, size, stock) VALUES (?, ?, ?)");
-                         sizes.forEach(s => {
-                             sizeStmt.run(pId, s.size, s.stock);
-                         });
-                         sizeStmt.finalize();
-                     } catch (e) {
-                         console.error("Size parse error:", e);
-                     }
-                 }
-                 res.json({ success: true });
-            });
-        } else {
-             res.json({ success: true });
-        }
-    });
-});
-
-// DELETE Product
-router.delete('/product/delete/:id', (req, res) => {
-    const productId = req.params.id;
-
-    // 1. DELETE FROM order_items (Force Delete History)
-    db.run("DELETE FROM order_items WHERE product_id = ?", [productId], (err) => {
-        if (err) {
-            console.error("Error deleting order items:", err);
-            return res.status(500).json({ success: false, message: 'Sipariş kayıtları silinemedi.' });
-        }
-
-        // 2. Delete associated sizes
-        db.run("DELETE FROM product_sizes WHERE product_id = ?", [productId], (err) => {
-            if (err) {
-                console.error("Error deleting sizes:", err);
-                return res.status(500).json({ success: false, message: 'Ürün bedenleri silinemedi.' });
-            }
-
-            // 3. Delete associated images
-            db.run("DELETE FROM product_images WHERE product_id = ?", [productId], (err) => {
-                if (err) {
-                    console.error("Error deleting images:", err);
-                    return res.status(500).json({ success: false, message: 'Ürün resimleri silinemedi.' });
-                }
-
-                // 4. Delete the product (Using functionality requested by user)
-                // Hocanın istediği Template Literals (Backtick) kullanımı:
-                const query = `DELETE FROM products WHERE id = ?`;
-
-                db.run(query, [productId], function(err) {
-                    if(err) {
-                        console.error("Delete Product Error:", err);
-                        return res.status(500).json({ success: false, message: 'Silme Hatası: ' + err.message });
-                    }
-                    
-                    if (this.changes > 0) {
-                        res.json({ success: true, message: 'Ürün başarıyla silindi.' });
-                    } else {
-                        res.json({ success: false, message: 'Ürün bulunamadı veya daha önce silinmiş.' });
-                    }
-                });
-            });
-        });
-    });
-});
-
-
-// POST Update Order Status
-router.post('/order/update/:id', (req, res) => {
-    const { status } = req.body;
-    db.run("UPDATE orders SET status = ? WHERE id = ?", [status, req.params.id], (err) => {
-        if(err) return res.status(500).json({ error: 'Hata.' });
-        res.json({ success: true });
-    });
-});
-
-module.exports = router;
+const express = require('express');const router = express.Router();const db = require('../database/database');const multer = require('multer');const path = require('path');const isAdmin = (req, res, next) => {    if (req.session.user && req.session.user.role === 'admin') {        return next();    }    res.redirect('/auth/login');};router.use(isAdmin);const storage = multer.diskStorage({    destination: (req, file, cb) => {        cb(null, 'public/images/');    },    filename: (req, file, cb) => {        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);        cb(null, uniqueSuffix + path.extname(file.originalname));    }});const upload = multer({ storage: storage });router.get('/', (req, res) => {    const path = require('path');    res.sendFile(path.join(__dirname, '../views/admin/dashboard.html'));});router.get('/data', (req, res) => {    db.all(`        SELECT p.*,         (SELECT image_url FROM product_images WHERE product_id = p.id LIMIT 1) as first_image         FROM products p ORDER BY id DESC    `, [], (err, products) => {        if (err) products = [];        db.all("SELECT * FROM product_sizes", [], (err, allSizes) => {            if (err) allSizes = [];            products.forEach(p => {                p.sizes = allSizes.filter(s => s.product_id === p.id);            });            db.all("SELECT orders.*, users.username FROM orders JOIN users ON orders.user_id = users.id ORDER BY created_at DESC", [], (err, orders) => {                if (err) orders = [];                const itemSql = `                    SELECT oi.order_id, oi.quantity, oi.size, p.name_tr, p.name_en, oi.product_id                    FROM order_items oi                    LEFT JOIN products p ON oi.product_id = p.id                `;                db.all(itemSql, [], (err, items) => {                    if (err) items = [];                    orders.forEach(o => {                        o.items = items.filter(i => i.order_id === o.id);                    });                    res.json({ products, orders });                });            });        });    });});router.get('/order/:id', (req, res) => {    const orderId = req.params.id;    const sql = `        SELECT             o.*,            u.username, u.email,            a.title as addr_title, a.city, a.district, a.full_address, a.phone,            pm.card_title, pm.card_number_masked as card_number        FROM orders o        JOIN users u ON o.user_id = u.id        LEFT JOIN addresses a ON o.address_id = a.id        LEFT JOIN payment_methods pm ON o.payment_id = pm.id        WHERE o.id = ?    `;    db.get(sql, [orderId], (err, order) => {        if (err) {            console.error(err);            return res.status(500).json({ error: 'Veritabanı hatası.' });        }        if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı.' });        db.all(`            SELECT oi.*, p.name_tr, p.name_en, p.cover_image_url            FROM order_items oi            LEFT JOIN products p ON oi.product_id = p.id            WHERE oi.order_id = ?        `, [orderId], (err, items) => {            if (err) items = [];            order.items = items;            res.json(order);        });    });});router.post('/product/add', upload.fields([{ name: 'cover_image', maxCount: 1 }, { name: 'images', maxCount: 10 }]), (req, res) => {    const { name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock } = req.body;    let coverImageUrl = null;    if (req.files && req.files['cover_image']) {        coverImageUrl = '/images/' + req.files['cover_image'][0].filename;    }    const stmt = db.prepare(`        INSERT INTO products (name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock, cover_image_url)         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)    `);    stmt.run(name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock, coverImageUrl, function(err) {        if(err) {            console.error(err);            return res.status(500).json({ error: 'Veritabanı hatası' });        }        const productId = this.lastID;        if (req.files && req.files['images'] && req.files['images'].length > 0) {            const imgStmt = db.prepare("INSERT INTO product_images (product_id, image_url) VALUES (?, ?)");            const promises = req.files['images'].map(file => {                return new Promise((resolve, reject) => {                    imgStmt.run(productId, '/images/' + file.filename, (err) => {                        if (err) reject(err);                        else resolve();                    });                });            });            Promise.all(promises)                .then(() => {                    imgStmt.finalize();                    handleSizes(productId);                })                .catch(err => {                    console.error("Image upload error:", err);                     handleSizes(productId);                });        } else {             handleSizes(productId);        }        function handleSizes(pId) {             if (req.body.sizes) {                 try {                     const sizes = JSON.parse(req.body.sizes);                     const sizeStmt = db.prepare("INSERT INTO product_sizes (product_id, size, stock) VALUES (?, ?, ?)");                     sizes.forEach(s => {                         sizeStmt.run(pId, s.size, s.stock);                     });                     sizeStmt.finalize();                 } catch (e) {                     console.error("Size parse error:", e);                 }             }             res.json({ success: true, message: 'Ürün eklendi.' });        }    });    stmt.finalize();});router.post('/product/update/:id', (req, res) => {    const { name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock } = req.body;    const sql = `UPDATE products SET                  name_tr = ?, name_en = ?, description_tr = ?, description_en = ?,                  fabric_info = ?, return_info = ?, price = ?, category = ?, stock = ?                  WHERE id = ?`;    db.run(sql, [name_tr, name_en, description_tr, description_en, fabric_info, return_info, price, category, stock, req.params.id], (err) => {        if(err) {            console.error(err);            return res.status(500).json({ error: 'Hata.' });        }        if (req.body.sizes) {            const pId = req.params.id;            db.run("DELETE FROM product_sizes WHERE product_id = ?", [pId], (err) => {                 if (!err) {                     try {                         const sizes = JSON.parse(req.body.sizes);                         const sizeStmt = db.prepare("INSERT INTO product_sizes (product_id, size, stock) VALUES (?, ?, ?)");                         sizes.forEach(s => {                             sizeStmt.run(pId, s.size, s.stock);                         });                         sizeStmt.finalize();                     } catch (e) {                         console.error("Size parse error:", e);                     }                 }                 res.json({ success: true });            });        } else {             res.json({ success: true });        }    });});router.delete('/product/delete/:id', (req, res) => {    const productId = req.params.id;    db.run("DELETE FROM order_items WHERE product_id = ?", [productId], (err) => {        if (err) {            console.error("Error deleting order items:", err);            return res.status(500).json({ success: false, message: 'Sipariş kayıtları silinemedi.' });        }        db.run("DELETE FROM product_sizes WHERE product_id = ?", [productId], (err) => {            if (err) {                console.error("Error deleting sizes:", err);                return res.status(500).json({ success: false, message: 'Ürün bedenleri silinemedi.' });            }            db.run("DELETE FROM product_images WHERE product_id = ?", [productId], (err) => {                if (err) {                    console.error("Error deleting images:", err);                    return res.status(500).json({ success: false, message: 'Ürün resimleri silinemedi.' });                }                const query = `DELETE FROM products WHERE id = ?`;                db.run(query, [productId], function(err) {                    if(err) {                        console.error("Delete Product Error:", err);                        return res.status(500).json({ success: false, message: 'Silme Hatası: ' + err.message });                    }                    if (this.changes > 0) {                        res.json({ success: true, message: 'Ürün başarıyla silindi.' });                    } else {                        res.json({ success: false, message: 'Ürün bulunamadı veya daha önce silinmiş.' });                    }                });            });        });    });});router.post('/order/update/:id', (req, res) => {    const { status } = req.body;    db.run("UPDATE orders SET status = ? WHERE id = ?", [status, req.params.id], (err) => {        if(err) return res.status(500).json({ error: 'Hata.' });        res.json({ success: true });    });});module.exports = router;
