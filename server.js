@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 if (!fs.existsSync('./database/cristobal.db')) {
-    console.log("Veritabanı dosyası bulunamadı. Lütfen 'npm run init-db' komutunu çalıştırın.");
+    console.log("Veritabanı dosyası bulunamadı.");
 }
 
 app.use(express.urlencoded({ extended: true }));
@@ -20,7 +20,7 @@ app.use(session({
     secret: 'cristobal_secret_key_123',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 1 week
+    cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
 
 app.use((req, res, next) => {
@@ -33,7 +33,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// Routes
+//yönlendirmeler 
 app.use('/api', require('./routes/api'));
 app.use('/', require('./routes/index'));
 app.use('/auth', require('./routes/auth'));
