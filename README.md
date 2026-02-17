@@ -1,4 +1,4 @@
-<h1 align="center"># Cristobal Textile E-Commerce Platform</h1>
+<h1 align="center"> Cristobal Textile E-Commerce Platform</h1>
 
 <p align="center">
   <strong>Live Application:</strong><br>
