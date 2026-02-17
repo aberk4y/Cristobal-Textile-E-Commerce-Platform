@@ -1,11 +1,11 @@
-# Cristobal Textile E-Commerce Platform
+<h1 align="center"># Cristobal Textile E-Commerce Platform</h1>
 
 <p align="center">
   <strong>Live Application:</strong><br>
   <a href="https://misty-bonni-0cristobal0-8ae4fe9c.koyeb.app/" target="_blank">
     https://misty-bonni-0cristobal0-8ae4fe9c.koyeb.app/
   </a>
-</p>
+
 
 ---
 
