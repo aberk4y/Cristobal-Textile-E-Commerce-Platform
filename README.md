@@ -75,25 +75,7 @@ Cristobal-Textile-E-Commerce/
 
 ---
 
-## Installation
 
-1. Clone the repository:
-
-git clone https://github.com/aberk4y/Tekstil-Alisveris-Web-Sitesi.git
-
-2. Install dependencies:
-
-npm install
-
-3. Start the server:
-
-node server.js
-
-4. Open in browser:
-
-http://localhost:3000
-
----
 
 ## Learning Outcomes
 
