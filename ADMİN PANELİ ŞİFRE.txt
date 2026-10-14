@@ -1,5 +1,0 @@
-Admin Paneline Aşağıdaki Bilgilerle Giriş Yapabilirsiniz:
-
-E-Posta : admin@cristobal.com
-Şifre : admin123
-
